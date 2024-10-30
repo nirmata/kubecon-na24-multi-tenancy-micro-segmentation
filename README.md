@@ -77,7 +77,7 @@ helm install kyverno kyverno/kyverno -n kyverno --create-namespace
 ## 2. Run the Guestbook Sample App
 
 ```sh
-helm install guestbook2 charts/guestbook/ --set namespacePrefix=guestbook
+helm install guestbook charts/guestbook/ --set namespacePrefix=guestbook
 ```
 
 ```sh
@@ -87,3 +87,15 @@ kubectl port-forward service/frontend 8080:80 -n guestbook-frontend
 ## 3. Check network connectivity
 
 
+# Kyverno Policies
+
+1. Require a `workspace` label for each namespace
+1. Automatically add `workspace` label to pods
+1. Generate netpol based on `DNS` label on namespace
+1. Generate netpol based on `allow-traffic-within-namespace` label on namespace
+1. Only allow `redis` image in the `backend` tier
+1. Only allow `frontend` image in the `frontend` tier
+
+Within a workspace:
+1. Only allow `frontend` traffic to the `backend` tier
+1. Only allow internet traffic to the `frontend` tier
