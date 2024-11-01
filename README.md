@@ -93,9 +93,8 @@ kubectl port-forward service/frontend 8080:80 -n guestbook-frontend
 - [x] Automatically add `workspace` and `tier` labels to pods
 - [x] Generate netpol based on `allow-dns-traffic` label on namespace
 - [x] Generate netpol based on `allow-ns-traffic` label on namespace
-- [ ] Only allow `redis` image in the `backend` tier
-- [ ] Only allow `frontend` image in the `frontend` tier
-- [ ] Require workspace labels on Cilium policies
+- [ ] Restrict images by tier i.e. only allow `redis` image in the `backend` tier
+- [ ] Require / inject workspace labels on Cilium policies
 - [ ] Do not allow traffic across workspaces
 
 Within a workspace (controlled by team?):
