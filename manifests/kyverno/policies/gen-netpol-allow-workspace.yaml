@@ -1,0 +1,40 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: generate-netpol-allowworkspace
+  annotations:
+    policies.kyverno.io/description: allow traffic within the workspace
+spec:
+  background: false
+  rules:
+    - name: alloworkspace
+      match:
+        resources:
+          kinds:
+            - Namespace
+          selector:
+            matchLabels:
+              allow-workspace-traffic: "true"
+          operations:
+            - CREATE
+            - UPDATE
+      generate:
+        generateExisting: true
+        kind: CiliumNetworkPolicy
+        apiVersion: cilium.io/v2
+        name: allow-ns
+        namespace: "{{request.object.metadata.name}}"
+        synchronize: true
+        data:
+          spec:
+            endpointSelector:
+                matchLabels: {}
+            egress:
+              - toEndpoints:
+                - matchLabels:
+                    "workspace": "{{ request.object.metadata.labels.workspace }}"
+            ingress:
+              - fromEndpoints:
+                - matchLabels:
+                    "workspace": "{{ request.object.metadata.labels.workspace }}"
+
