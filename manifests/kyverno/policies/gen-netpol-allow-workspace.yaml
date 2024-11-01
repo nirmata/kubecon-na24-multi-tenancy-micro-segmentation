@@ -22,7 +22,7 @@ spec:
         generateExisting: true
         kind: CiliumNetworkPolicy
         apiVersion: cilium.io/v2
-        name: allow-ns
+        name: allow-workspace
         namespace: "{{request.object.metadata.name}}"
         synchronize: true
         data:
