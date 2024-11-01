@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test
+  labels:
+    workspace: w1
+    tier: t1

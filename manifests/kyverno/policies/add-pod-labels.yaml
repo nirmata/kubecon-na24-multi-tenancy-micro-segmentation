@@ -1,0 +1,30 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: add-pod-labels
+  annotations:
+    pod-policies.kyverno.io/autogen-controllers: "none"
+    policies.kyverno.io/description: add labels to pods
+spec:
+  background: false
+  rules:
+    - name: mutate-pod-labels
+      match:
+        resources:
+          kinds:
+            - Pod
+      context:
+      - name: workspace
+        apiCall:
+          urlPath: "/api/v1/namespaces/{{ request.object.metadata.namespace }}"
+          jmesPath: metadata.labels.workspace || 'default'
+      - name: tier
+        apiCall:
+          urlPath: "/api/v1/namespaces/{{ request.object.metadata.namespace }}"
+          jmesPath: metadata.labels.tier || 'default'
+      mutate:
+        patchStrategicMerge:
+          metadata:
+            labels:
+              workspace: "{{ workspace }}"
+              tier: "{{ tier }}"

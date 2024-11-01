@@ -89,13 +89,15 @@ kubectl port-forward service/frontend 8080:80 -n guestbook-frontend
 
 # Kyverno Policies
 
-1. Require a `workspace` label for each namespace
-1. Automatically add `workspace` label to pods
-1. Generate netpol based on `DNS` label on namespace
-1. Generate netpol based on `allow-traffic-within-namespace` label on namespace
-1. Only allow `redis` image in the `backend` tier
-1. Only allow `frontend` image in the `frontend` tier
+- [x] Require a `workspace` and `tier` labels for each namespace
+- [x] Automatically add `workspace` and `tier` labels to pods
+- [x] Generate netpol based on `allow-dns-traffic` label on namespace
+- [x] Generate netpol based on `allow-ns-traffic` label on namespace
+- [ ] Only allow `redis` image in the `backend` tier
+- [ ] Only allow `frontend` image in the `frontend` tier
+- [ ] Require workspace labels on Cilium policies
+- [ ] Do not allow traffic across workspaces
 
-Within a workspace:
+Within a workspace (controlled by team?):
 1. Only allow `frontend` traffic to the `backend` tier
-1. Only allow internet traffic to the `frontend` tier
+2. Only allow internet traffic to the `frontend` tier
