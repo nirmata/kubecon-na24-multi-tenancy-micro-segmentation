@@ -3,5 +3,5 @@ kind: Namespace
 metadata:
   name: test
   labels:
-    workspace: w1
-    tier: t1
+    workspace: wks-test-1
+    tier: backend

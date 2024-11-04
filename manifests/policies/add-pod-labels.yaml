@@ -1,18 +1,21 @@
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
-  name: add-pod-labels
+  name: add-labels
   annotations:
     pod-policies.kyverno.io/autogen-controllers: "none"
     policies.kyverno.io/description: add labels to pods
 spec:
   background: false
   rules:
-    - name: mutate-pod-labels
+    - name: mutate-workload-labels
       match:
         resources:
           kinds:
             - Pod
+            - Deployment
+            - StatefulSet
+            - DaemonSet
       context:
       - name: workspace
         apiCall:

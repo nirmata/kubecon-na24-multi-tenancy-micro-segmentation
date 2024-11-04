@@ -1,7 +1,7 @@
-apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
+apiVersion: cilium.io/v2
 metadata:
-  name: "allow-dns"
+  name: allow-dns
 spec:
   endpointSelector:
     matchLabels: {}

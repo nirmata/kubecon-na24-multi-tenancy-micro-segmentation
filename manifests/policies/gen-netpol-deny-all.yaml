@@ -24,9 +24,7 @@ spec:
           spec:
             endpointSelector:
               matchLabels: {}
-            ingress:
-            - fromEndpoints:
-              - matchLabels: {}
-            egress:
-            - fromEndpoints:
-              - matchLabels: {}
+            ingress: 
+            - {}
+            egress: 
+            - {}

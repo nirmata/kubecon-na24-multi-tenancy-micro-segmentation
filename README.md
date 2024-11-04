@@ -1,11 +1,17 @@
 # kcna24-multi-tenancy-micro-segmentation
 
+Clone this repo and cd to the base directory:
+
+```sh
+git clone https://github.com/jimbugwadia/kcna24-multi-tenancy-micro-segmentation; cd kcna24-multi-tenancy-micro-segmentation
+```
+
 # Setup
 
 ## 1. Create kind cluster
 
 ```
-kind create cluster --config=manifests/kind/config.yaml
+kind create cluster --config=manifests/kind-config.yaml --name=kcna24mnms
 ```
 
 ## 2. Install Cilium
@@ -73,30 +79,224 @@ helm repo update
 helm install kyverno kyverno/kyverno -n kyverno --create-namespace
 ```
 
-
-## 2. Run the Guestbook Sample App
-
-```sh
-helm install guestbook charts/guestbook/ --set namespacePrefix=guestbook
-```
+## 3. Install Kyverno policies
 
 ```sh
-kubectl port-forward service/frontend 8080:80 -n guestbook-frontend
+kubectl apply -f manifests/policies/
 ```
 
-## 3. Check network connectivity
-
-
-# Kyverno Policies
+The following policies will be installed:
 
 - [x] Require a `workspace` and `tier` labels for each namespace
 - [x] Automatically add `workspace` and `tier` labels to pods
-- [x] Generate netpol based on `allow-dns-traffic` label on namespace
-- [x] Generate netpol based on `allow-ns-traffic` label on namespace
-- [ ] Restrict images by tier i.e. only allow `redis` image in the `backend` tier
-- [ ] Require / inject workspace labels on Cilium policies
-- [ ] Do not allow traffic across workspaces
+- [x] Generate network policy based on `allow-dns-traffic` label on namespace
+- [x] Generate network policy based on `allow-ns-traffic` label on namespace
+- [x] Generate network policy based on `allow-workspace-traffic` label on namespace
+- [x] Restrict images by tier i.e. eg allow `redis` image in the `backend` tier
+- [x] Do not allow egress traffic from `backend` tier
+- [x] Do not allow aribitary ingress traffic to `backend` tier
 
-Within a workspace (controlled by team?):
-1. Only allow `frontend` traffic to the `backend` tier
-2. Only allow internet traffic to the `frontend` tier
+
+# Demo
+
+## 1. Test Kyverno policies
+
+### Require namespace labels
+
+Try creating a namespace `test`:
+
+```sh
+kubectl create ns test
+```
+
+This will be blocked by Kyverno:
+
+```sh
+Error from server: admission webhook "validate.kyverno.svc-fail" denied the request:
+
+resource Namespace//test was blocked due to the following policies
+
+require-labels:
+  check-ns: 'validation error: The namespace must have a labels workspace and tier.
+    rule check-ns failed at path /metadata/labels/tier/
+```
+
+Use the provided sample with required labels:
+
+```sh
+kubectl apply -f manifests/ns.yaml
+```
+
+This should succeed.
+
+### Mutate pod labels
+
+Run a redis image and check labels:
+
+```sh
+k -n test run redis --image redis --dry-run=server -o yaml | grep -e "tier" -e "workspace"
+```
+
+### Generate network policies
+
+Check the Cilium network policies:
+
+```sh
+k -n test get cnp
+```
+
+This should show the default deny-all policy:
+
+```sh
+NAME       AGE   VALID
+deny-all   10m   True
+```
+
+Add a label `allow-dns-traffic`:
+
+```sh
+kubectl label ns test allow-dns-traffic=true
+```
+
+Check the Cilium network policies again. This should now show an additional `allow-dns` policy:
+
+```sh
+k -n test get cnp
+NAME        AGE   VALID
+allow-dns   5s    True
+deny-all    13m   True
+```
+
+Try setting the label to `false`:
+
+```sh
+kubectl label ns test allow-dns-traffic=false --overwrite
+```
+
+Then recheck the policy, the `allow-dns` policy should be deleted.
+
+### Restrict images
+
+Run an unauthorized image in the `backend` tier:
+
+```sh
+k -n test run nginx --image nginx --dry-run=server
+```
+
+This will be blocked by Kyverno:
+
+```sh
+Error from server: admission webhook "validate.kyverno.svc-fail" denied the request:
+
+resource Pod/test/nginx was blocked due to the following policies
+
+check-images:
+  backend-images: 'validation failure: image nginx is not allowed in the backend tier'
+```
+
+Run a valid image; this should be allowed:
+
+```sh
+kubectl -n test run redis --image=redis --dry-run=server
+pod/redis created (server dry run)
+```
+
+### Restrict traffic to the backend tier
+
+Try creating a Cilium network policy that allows internet traffic to the `backend` tier:
+
+```sh
+kubectl -n test apply -f manifests/cnp-ingress-world.yaml
+```
+
+This will be blocked by kyverno:
+
+```sh
+Error from server: error when creating "manifests/cnp-ingress-world.yaml": admission webhook "validate.kyverno.svc-fail" denied the request:
+
+resource CiliumNetworkPolicy/test/backend-ingress was blocked due to the following policies
+
+check-network-policies:
+  check-ingress-backend: only ingress traffic from the frontend tier is allowed; fromEntities
+    are not allowed
+```
+
+You can also try the polict that allows egress traffic from the `backend` tier:
+
+```sh
+kubectl -n test apply -f manifests/cnp-egress-world.yaml
+```
+
+### Cleanup
+
+```sh
+kubectl delete ns test
+```
+
+## 2. Run the Guestbook app in 2 different workspaces
+
+The Guestbook app a 2-tier application with `guestbook` running in the `frontend` tier and `redis` running in the `backend` tier. The application is configured across 2 namespaces, one for each tier.
+
+Create 2 instances of the Guestbook application in different workspaces `wks1` and `wks2`. A workspace is a network segmentation boundary used to isolate applications.
+
+```sh
+helm install guestbook1 charts/guestbook/ --set workspace=wks1
+helm install guestbook2 charts/guestbook/ --set workspace=wks2
+```
+
+Check connectity for the applications:
+
+```sh
+kubectl port-forward service/guestbook 8080:80 -n wks1-guestbook
+```
+
+Navigate to http://localhost:8080 and make sure you an enter a value and it is shown as a guestbook entry after clicking the submit button.
+
+Repeat the test for `guestbook2` in `wks2`.
+
+## 3. Test network connectivity within and across workspaces
+
+Attach `netshoot` as a debug container to the `guestbook` pod in the `frontend` tier:
+
+```sh
+kubectl -n wks1-guestbook get pods
+NAME                         READY   STATUS    RESTARTS   AGE
+guestbook-7dc7786f46-78hkk   1/1     Running   0          3m7s
+```
+
+Note: you will need to update the pod number to match yours:
+
+```sh
+kubectl -n wks1-guestbook debug -i -t --image nicolaka/netshoot guestbook-7dc7786f46-78hkk
+```
+
+In the netshoot session check connectivity from the frontend pod in wks1 to the backend service in wks1:
+
+```sh
+nc -w 2 -v redis-leader.wks1-redis.svc.cluster.local 6379
+```
+
+This should show a message similar to:
+
+```sh
+Connection to redis-leader.wks1-redis.svc.cluster.local (10.11.75.0) 6379 port [tcp/redis] succeeded!
+```
+
+Now, try connecting across workspaces:
+
+```sh
+nc -w 2 -v redis-leader.wks2-redis.svc.cluster.local 6379
+```
+
+This should timeout and fail:
+
+```sh
+nc: connect to redis-leader.wks2-redis.svc.cluster.local (10.11.147.254) port 6379 (tcp) timed out: Operation in progress
+```
+
+Cleanup:
+
+```sh
+helm uninstall guestbook1
+helm uninstall guestbook2
+```

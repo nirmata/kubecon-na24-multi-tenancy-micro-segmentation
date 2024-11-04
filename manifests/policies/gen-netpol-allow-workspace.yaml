@@ -7,7 +7,7 @@ metadata:
 spec:
   background: false
   rules:
-    - name: alloworkspace
+    - name: allow-workspace
       match:
         resources:
           kinds:
@@ -20,21 +20,21 @@ spec:
             - UPDATE
       generate:
         generateExisting: true
-        kind: CiliumNetworkPolicy
+        kind: CiliumClusterwideNetworkPolicy
         apiVersion: cilium.io/v2
-        name: allow-workspace
-        namespace: "{{request.object.metadata.name}}"
+        name: allow-{{ request.object.metadata.name }}
         synchronize: true
         data:
           spec:
             endpointSelector:
-                matchLabels: {}
+                matchLabels:
+                  workspace: "{{ request.object.metadata.labels.workspace }}"
             egress:
               - toEndpoints:
                 - matchLabels:
-                    "workspace": "{{ request.object.metadata.labels.workspace }}"
+                    io.cilium.k8s.namespace.labels.workspace: "{{ request.object.metadata.labels.workspace }}"
             ingress:
               - fromEndpoints:
                 - matchLabels:
-                    "workspace": "{{ request.object.metadata.labels.workspace }}"
-
+                    io.cilium.k8s.namespace.labels.workspace: "{{ request.object.metadata.labels.workspace }}"
+        

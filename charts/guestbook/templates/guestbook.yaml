@@ -1,15 +1,31 @@
+---
 apiVersion: v1
 kind: Namespace
 metadata:
+  name: {{ .Values.workspace }}-guestbook
   labels:
-    kubernetes.io/metadata.name: {{ .Values.namespacePrefix }}-redis
-  name: {{ .Values.namespacePrefix }}-redis
+    kubernetes.io/metadata.name: {{ .Values.workspace }}-guestbook
+    tier: "frontend"
+    workspace: {{ .Values.workspace }}
+    allow-dns-traffic: "true"
+    allow-workspace-traffic: "true"
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.workspace }}-redis
+  labels:
+    kubernetes.io/metadata.name: {{ .Values.workspace }}-redis
+    tier: "backend"
+    workspace: {{ .Values.workspace }}
+    allow-dns-traffic: "true"
+    allow-workspace-traffic: "true"
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: redis-leader
-  namespace: {{ .Values.namespacePrefix }}-redis
+  namespace: {{ .Values.workspace }}-redis
   labels:
     app: redis
     role: leader
@@ -40,7 +56,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: redis-leader
-  namespace: {{ .Values.namespacePrefix }}-redis
+  namespace: {{ .Values.workspace }}-redis
   labels:
     app: redis
     role: leader
@@ -58,7 +74,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: redis-follower
-  namespace: {{ .Values.namespacePrefix }}-redis
+  namespace: {{ .Values.workspace }}-redis
   labels:
     app: redis
     role: follower
@@ -89,7 +105,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: redis-follower
-  namespace: {{ .Values.namespacePrefix }}-redis
+  namespace: {{ .Values.workspace }}-redis
   labels:
     app: redis
     role: follower
@@ -103,18 +119,11 @@ spec:
     role: follower
     tier: backend
 ---
-apiVersion: v1
-kind: Namespace
-metadata:
-  labels:
-    kubernetes.io/metadata.name: {{ .Values.namespacePrefix }}-frontend
-  name: {{ .Values.namespacePrefix }}-frontend
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: frontend
-  namespace: {{ .Values.namespacePrefix }}-frontend
+  name: guestbook
+  namespace: {{ .Values.workspace }}-guestbook
 spec:
   replicas: 1
   selector:
@@ -143,8 +152,8 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: frontend
-  namespace: {{ .Values.namespacePrefix }}-frontend
+  name: guestbook
+  namespace: {{ .Values.workspace }}-guestbook
 spec:
   labels:
     app: guestbook
@@ -161,16 +170,16 @@ apiVersion: v1
 kind: Service
 metadata:
   name: "redis-leader"
-  namespace: {{ .Values.namespacePrefix }}-frontend
+  namespace: {{ .Values.workspace }}-guestbook
 spec:
   type: ExternalName
-  externalName: redis-leader.{{ .Values.namespacePrefix }}-redis.svc.cluster.local
+  externalName: redis-leader.{{ .Values.workspace }}-redis.svc.cluster.local
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: "redis-follower"
-  namespace: {{ .Values.namespacePrefix }}-frontend
+  namespace: {{ .Values.workspace }}-guestbook
 spec:
   type: ExternalName
-  externalName: redis-follower.{{ .Values.namespacePrefix }}-redis.svc.cluster.local
+  externalName: redis-follower.{{ .Values.workspace }}-redis.svc.cluster.local
