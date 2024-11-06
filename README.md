@@ -79,6 +79,12 @@ helm repo update
 helm install kyverno kyverno/kyverno -n kyverno --create-namespace
 ```
 
+Configure Kyverno permissions to allow managing Cilium network policies:
+
+```sh
+
+```
+
 ## 3. Install Kyverno policies
 
 ```sh
@@ -94,7 +100,7 @@ The following policies will be installed:
 - [x] Generate network policy based on `allow-workspace-traffic` label on namespace
 - [x] Restrict images by tier i.e. eg allow `redis` image in the `backend` tier
 - [x] Do not allow egress traffic from `backend` tier
-- [x] Do not allow aribitary ingress traffic to `backend` tier
+- [x] Do not allow arbitrary ingress traffic to `backend` tier
 
 
 # Demo
