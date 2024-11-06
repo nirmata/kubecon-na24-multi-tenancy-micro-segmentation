@@ -15,9 +15,6 @@ spec:
           selector:
             matchLabels:
               allow-dns-traffic: "true"
-          operations:
-            - CREATE
-            - UPDATE
       generate:
         kind: CiliumNetworkPolicy
         apiVersion: cilium.io/v2

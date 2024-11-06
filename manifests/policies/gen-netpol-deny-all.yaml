@@ -12,8 +12,6 @@ spec:
         resources:
           kinds:
             - Namespace
-          operations:
-            - CREATE
       generate:
         kind: CiliumNetworkPolicy
         apiVersion: cilium.io/v2

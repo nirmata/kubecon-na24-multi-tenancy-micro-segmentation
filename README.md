@@ -7,8 +7,8 @@ The demo is based on the following KubeCon NA 2024 presentation: [Micro-Segmenta
 Multi-tenancy is enforced based on namespaces and `workspaces`, which provide a segmentation boundary for a collection of namepaces.
 
 The application for the demo is Guestbook. It consists of 2 tiers:
-- Frontend: the Guestbook PHP app
-- Backend: a Redis leader and follower
+- `Frontend`: the Guestbook PHP app
+- `Backend`: a Redis leader and follower
 
 Kyverno policies are used to auto-generate namespace and workspace level Cilium network policies and provide guardrails for application network policies based on application tiers.
 
@@ -20,15 +20,15 @@ Clone this repo and cd to the base directory:
 git clone https://github.com/jimbugwadia/kcna24-multi-tenancy-micro-segmentation; cd kcna24-multi-tenancy-micro-segmentation
 ```
 
-# Setup
+## Setup
 
-## 1. Create kind cluster
+### 1. Create kind cluster
 
 ```
 kind create cluster --config=manifests/kind-config.yaml --name=kcna24mnms
 ```
 
-## 2. Install Cilium
+### 2. Install Cilium
 
 From: https://docs.cilium.io/en/latest/installation/kind/#install-cilium
 
@@ -82,7 +82,7 @@ Image versions         cilium             quay.io/cilium/cilium-ci:latest: 4
                        cilium-operator    quay.io/cilium/operator-generic-ci:latest: 2
 ```
 
-## 2. Install Kyverno
+### 2. Install Kyverno
 
 From https://kyverno.io/docs/installation/methods/#install-kyverno-using-helm
 
@@ -96,19 +96,19 @@ helm install kyverno kyverno/kyverno -n kyverno --create-namespace
 Configure Kyverno permissions to allow managing Cilium network policies:
 
 ```sh
-
+kubectl apply -f manifests/kyverno-rbac.yaml
 ```
 
-## 3. Install Kyverno policies
+### 3. Install Kyverno policies
 
 ```sh
 kubectl apply -f manifests/policies/
 ```
 
-The following policies will be installed:
+Kyverno policies will be installed for the following:
 
 - [x] Require a `workspace` and `tier` labels for each namespace
-- [x] Automatically add `workspace` and `tier` labels to pods
+- [x] Automatically add the namespace `workspace` and `tier` labels to pods
 - [x] Generate network policy based on `allow-dns-traffic` label on namespace
 - [x] Generate network policy based on `allow-ns-traffic` label on namespace
 - [x] Generate network policy based on `allow-workspace-traffic` label on namespace
@@ -219,6 +219,14 @@ Run a valid image; this should be allowed:
 ```sh
 kubectl -n test run redis --image=redis --dry-run=server
 pod/redis created (server dry run)
+```
+
+### Apply namespace labels to pods
+
+Run the following command to make sure the namespace labels are applied to pods:
+
+```sh
+kubectl -n test run redis --image redis --dry-run=server -o yaml | grep -e "tier" -e "workspace"
 ```
 
 ### Restrict traffic to the backend tier
