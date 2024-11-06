@@ -1,5 +1,19 @@
 # kcna24-multi-tenancy-micro-segmentation
 
+This repository contains a demo of using Kyverno and Cilium to automate multi-tenancy and micro-segmentation for Kubernetes.
+
+The demo is based on the following KubeCon NA 2024 presentation: [Micro-Segmentation and Multi-Tenancy: The Brown M&Ms of Platform Engineering](https://sched.co/1i7q)
+
+Multi-tenancy is enforced based on namespaces and `workspaces`, which provide a segmentation boundary for a collection of namepaces.
+
+The application for the demo is Guestbook. It consists of 2 tiers:
+- Frontend: the Guestbook PHP app
+- Backend: a Redis leader and follower
+
+Kyverno policies are used to auto-generate namespace and workspace level Cilium network policies and provide guardrails for application network policies based on application tiers.
+
+# Demo
+
 Clone this repo and cd to the base directory:
 
 ```sh
@@ -227,7 +241,7 @@ check-network-policies:
     are not allowed
 ```
 
-You can also try the polict that allows egress traffic from the `backend` tier:
+You can also try the policy that allows egress traffic from the `backend` tier:
 
 ```sh
 kubectl -n test apply -f manifests/cnp-egress-world.yaml
