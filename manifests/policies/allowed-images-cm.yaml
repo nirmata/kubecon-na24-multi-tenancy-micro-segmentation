@@ -1,7 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: allowed-images
-  namespace: kyverno
-data:
-  backend: "[\"redis*\"]"

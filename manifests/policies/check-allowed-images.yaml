@@ -22,7 +22,7 @@ spec:
     validate:
       deny:
       foreach:
-      - list: "images.*.* | []" 
+      - list: "images.*.* | []"
         deny:
           conditions:
             all:
