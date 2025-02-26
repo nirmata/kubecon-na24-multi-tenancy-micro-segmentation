@@ -1,8 +1,8 @@
-# kcna24-multi-tenancy-micro-segmentation
+# KubeCon NA 2024 - Micro-Segmentation and Multi-Tenancy: The Brown M&Ms of Platform Engineering
 
 This repository contains a demo of using Kyverno and Cilium to automate multi-tenancy and micro-segmentation for Kubernetes.
 
-The demo is based on the following KubeCon NA 2024 presentation: [Micro-Segmentation and Multi-Tenancy: The Brown M&Ms of Platform Engineering](https://sched.co/1i7q)
+The demo is based on the following KubeCon NA 2024 presentation: Micro-Segmentation and Multi-Tenancy: The Brown M&Ms of Platform Engineering ([video](https://github.com/nirmata/kcna24-multi-tenancy-micro-segmentation/), [slides](https://docs.google.com/presentation/d/1-_-EEiA5F4ffwhfDxIH1ysP-Pd1WdvAj/edit#))
 
 Multi-tenancy is enforced based on namespaces and `workspaces`, which provide a segmentation boundary for a collection of namepaces.
 
@@ -40,8 +40,8 @@ cd cilium-main/install/kubernetes
 ``` -->
 
 ``` sh
-docker pull quay.io/cilium/cilium:v1.17.0-pre.1
-kind load docker-image quay.io/cilium/cilium:v1.17.0-pre.1
+docker pull quay.io/cilium/cilium:v1.17.1
+kind load docker-image quay.io/cilium/cilium:v1.17.1
 ```
 
 ``` sh

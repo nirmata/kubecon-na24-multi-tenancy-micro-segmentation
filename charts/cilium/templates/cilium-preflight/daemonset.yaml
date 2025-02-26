@@ -5,6 +5,10 @@ metadata:
   name: cilium-pre-flight-check
   namespace: {{ include "cilium.namespace" . }}
   {{- with .Values.preflight.annotations }}
+  {{- with .Values.commonLabels }}
+  labels:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
@@ -24,6 +28,9 @@ spec:
         k8s-app: cilium-pre-flight-check
         app.kubernetes.io/name: cilium-pre-flight-check
         kubernetes.io/cluster-service: "true"
+        {{- with .Values.commonLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
         {{- with .Values.preflight.podLabels }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -130,6 +137,15 @@ spec:
             initialDelaySeconds: 5
             periodSeconds: 5
           env:
+          {{- if and .Values.k8sServiceHostRef.name .Values.k8sServiceHostRef.key }}
+          - name: KUBERNETES_SERVICE_HOST
+            valueFrom:
+              configMapKeyRef:
+                name: {{ .Values.k8sServiceHostRef.name }}
+                key: {{ .Values.k8sServiceHostRef.key }}
+          - name: KUBERNETES_SERVICE_PORT
+            value: {{ include "k8sServicePort" . }}
+          {{- end }}
           {{- if .Values.k8sServiceHost }}
           - name: KUBERNETES_SERVICE_HOST
             value: {{ include "k8sServiceHost" . }}
@@ -209,8 +225,8 @@ spec:
           defaultMode: 0400
           optional: true
       {{- end }}
+      {{- end }}
       {{- with .Values.preflight.extraVolumes }}
       {{- toYaml . | nindent 6 }}
-      {{- end }}
       {{- end }}
 {{- end }}

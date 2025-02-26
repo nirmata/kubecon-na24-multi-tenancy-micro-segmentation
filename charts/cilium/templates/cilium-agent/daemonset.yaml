@@ -15,7 +15,7 @@
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: cilium
+  name: {{ .Values.name }}
   namespace: {{ include "cilium.namespace" . }}
   {{- with .Values.annotations }}
   annotations:
@@ -25,6 +25,9 @@ metadata:
     k8s-app: cilium
     app.kubernetes.io/part-of: cilium
     app.kubernetes.io/name: cilium-agent
+    {{- with .Values.commonLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
     {{- if .Values.keepDeprecatedLabels }}
     kubernetes.io/cluster-service: "true"
     {{- if and .Values.gke.enabled (eq (include "cilium.namespace" .) "kube-system" ) }}
@@ -73,6 +76,9 @@ spec:
         k8s-app: cilium
         app.kubernetes.io/name: cilium-agent
         app.kubernetes.io/part-of: cilium
+        {{- with .Values.commonLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
         {{- if .Values.keepDeprecatedLabels }}
         kubernetes.io/cluster-service: "true"
         {{- end }}
@@ -197,11 +203,26 @@ spec:
             resourceFieldRef:
               resource: limits.memory
               divisor: '1'
+        {{- if and .Values.k8sServiceHostRef.name .Values.k8sServiceHostRef.key }}
+        - name: KUBERNETES_SERVICE_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: {{ .Values.k8sServiceHostRef.name }}
+              key: {{ .Values.k8sServiceHostRef.key }}
+        - name: KUBERNETES_SERVICE_PORT
+          value: {{ include "k8sServicePort" . }}
+        {{- end }}
         {{- if .Values.k8sServiceHost }}
         - name: KUBERNETES_SERVICE_HOST
           value: {{ include "k8sServiceHost" . }}
         - name: KUBERNETES_SERVICE_PORT
           value: {{ include "k8sServicePort" . }}
+        {{- end }}
+        {{- if .Values.k8sClientExponentialBackoff.enabled }}
+        - name: KUBE_CLIENT_BACKOFF_BASE
+          value: {{ .Values.k8sClientExponentialBackoff.backoffBaseSeconds | quote }}
+        - name: KUBE_CLIENT_BACKOFF_DURATION
+          value: {{ .Values.k8sClientExponentialBackoff.backoffMaxDurationSeconds | quote }}
         {{- end }}
         {{- with .Values.extraEnv }}
         {{- toYaml . | trim | nindent 8 }}
@@ -226,7 +247,7 @@ spec:
         resources:
           {{- toYaml . | trim | nindent 10 }}
         {{- end }}
-        {{- if or .Values.prometheus.enabled .Values.hubble.metrics.enabled }}
+        {{- if or .Values.prometheus.enabled (or .Values.hubble.metrics.enabled .Values.hubble.metrics.dynamic.enabled) }}
         ports:
         - name: peer-service
           containerPort: {{ .Values.hubble.peerService.targetPort }}
@@ -250,7 +271,7 @@ spec:
           protocol: TCP
         {{- end }}
         {{- end }}
-        {{- if .Values.hubble.metrics.enabled }}
+        {{- if or .Values.hubble.metrics.enabled .Values.hubble.metrics.dynamic.enabled }}
         - name: hubble-metrics
           containerPort: {{ .Values.hubble.metrics.port }}
           hostPort: {{ .Values.hubble.metrics.port }}
@@ -295,7 +316,6 @@ spec:
         - mountPath: /host/proc/sys/kernel
           name: host-proc-sys-kernel
         {{- end}}
-        {{- if .Values.bpf.autoMount.enabled }}
         - name: bpf-maps
           mountPath: /sys/fs/bpf
           {{- if .Values.securityContext.privileged }}
@@ -307,7 +327,6 @@ spec:
           # in Cilium.
           mountPropagation: HostToContainer
           {{- end}}
-        {{- end }}
         {{- if not (contains "/run/cilium/cgroupv2" .Values.cgroup.hostRoot) }}
         # Check for duplicate mounts before mounting
         - name: cilium-cgroup
@@ -358,12 +377,7 @@ spec:
           mountPath: {{ .Values.kubeConfigPath }}
           readOnly: true
         {{- end }}
-        {{- if .Values.bgp.enabled }}
-        - name: bgp-config-path
-          mountPath: /var/lib/cilium/bgp
-          readOnly: true
-        {{- end }}
-        {{- if and .Values.hubble.enabled .Values.hubble.metrics.enabled .Values.hubble.metrics.tls.enabled }}
+        {{- if and .Values.hubble.enabled (or .Values.hubble.metrics.enabled .Values.hubble.metrics.dynamic.enabled) .Values.hubble.metrics.tls.enabled }}
         - name: hubble-metrics-tls
           mountPath: /var/lib/cilium/tls/hubble-metrics
           readOnly: true
@@ -382,6 +396,11 @@ spec:
           {{- if .mountPropagation }}
           mountPropagation: {{ .mountPropagation }}
           {{- end }}
+        {{- end }}
+        {{- if .Values.hubble.metrics.dynamic.enabled }}
+        - name: hubble-dynamic-metrics-config
+          mountPath: /dynamic-metrics-config
+          readOnly: true
         {{- end }}
         {{- if .Values.hubble.export.dynamic.enabled }}
         - name: hubble-flowlog-config
@@ -453,6 +472,15 @@ spec:
             fieldRef:
               apiVersion: v1
               fieldPath: metadata.namespace
+        {{- if and .Values.k8sServiceHostRef.name .Values.k8sServiceHostRef.key }}
+        - name: KUBERNETES_SERVICE_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: {{ .Values.k8sServiceHostRef.name }}
+              key: {{ .Values.k8sServiceHostRef.key }}
+        - name: KUBERNETES_SERVICE_PORT
+          value: {{ include "k8sServicePort" . }}
+        {{- end }}
         {{- if .Values.k8sServiceHost }}
         - name: KUBERNETES_SERVICE_HOST
           value: {{ include "k8sServiceHost" . }}
@@ -590,12 +618,10 @@ spec:
         terminationMessagePolicy: FallbackToLogsOnError
         securityContext:
           privileged: true
-      {{- if and .Values.bpf.autoMount.enabled }}
         volumeMounts:
         - name: bpf-maps
           mountPath: /sys/fs/bpf
           mountPropagation: Bidirectional
-        {{- end }}
       {{- end }}
       {{- if and .Values.nodeinit.enabled .Values.nodeinit.bootstrapFile }}
       - name: wait-for-node-init
@@ -642,6 +668,15 @@ spec:
               name: cilium-config
               key: write-cni-conf-when-ready
               optional: true
+        {{- if and .Values.k8sServiceHostRef.name .Values.k8sServiceHostRef.key }}
+        - name: KUBERNETES_SERVICE_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: {{ .Values.k8sServiceHostRef.name }}
+              key: {{ .Values.k8sServiceHostRef.key }}
+        - name: KUBERNETES_SERVICE_PORT
+          value: {{ include "k8sServicePort" . }}
+        {{- end }}
         {{- if .Values.k8sServiceHost }}
         - name: KUBERNETES_SERVICE_HOST
           value: {{ include "k8sServiceHost" . }}
@@ -669,10 +704,8 @@ spec:
               - ALL
           {{- end}}
         volumeMounts:
-        {{- if .Values.bpf.autoMount.enabled}}
         - name: bpf-maps
           mountPath: /sys/fs/bpf
-        {{- end }}
           # Required to mount cgroup filesystem from the host to cilium agent pod
         - name: cilium-cgroup
           mountPath: {{ .Values.cgroup.hostRoot }}
@@ -800,13 +833,11 @@ spec:
         hostPath:
           path: /var/run/netns
           type: DirectoryOrCreate
-      {{- if .Values.bpf.autoMount.enabled }}
         # To keep state between restarts / upgrades for bpf maps
       - name: bpf-maps
         hostPath:
           path: /sys/fs/bpf
           type: DirectoryOrCreate
-      {{- end }}
       {{- if or .Values.cgroup.autoMount.enabled .Values.sysctlfix.enabled }}
       # To mount cgroup2 filesystem on the host or apply sysctlfix
       - name: hostproc
@@ -957,11 +988,6 @@ spec:
         configMap:
           name: {{ .Values.cni.configMap }}
       {{- end }}
-      {{- if .Values.bgp.enabled }}
-      - name: bgp-config-path
-        configMap:
-          name: bgp-config
-      {{- end }}
       {{- if not .Values.securityContext.privileged }}
       - name: host-proc-sys-net
         hostPath:
@@ -998,7 +1024,7 @@ spec:
                 path: client-ca.crt
           {{- end }}
       {{- end }}
-      {{- if and .Values.hubble.enabled .Values.hubble.metrics.enabled .Values.hubble.metrics.tls.enabled }}
+      {{- if and .Values.hubble.enabled (or .Values.hubble.metrics.enabled .Values.hubble.metrics.dynamic.enabled) .Values.hubble.metrics.tls.enabled }}
       - name: hubble-metrics-tls
         projected:
           # note: the leading zero means this number is in octal representation: do not remove it
@@ -1036,6 +1062,12 @@ spec:
           {{- end }}
           {{- end }}
 
+      {{- end }}
+      {{- if .Values.hubble.metrics.dynamic.enabled }}
+      - name: hubble-dynamic-metrics-config
+        configMap:
+          name: {{ .Values.hubble.metrics.dynamic.config.configMapName }}
+          optional: true
       {{- end }}
       {{- if .Values.hubble.export.dynamic.enabled }}
       - name: hubble-flowlog-config

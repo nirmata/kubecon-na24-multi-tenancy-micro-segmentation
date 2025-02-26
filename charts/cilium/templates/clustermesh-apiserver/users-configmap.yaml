@@ -1,5 +1,5 @@
 {{- if and
-  (or .Values.externalWorkloads.enabled .Values.clustermesh.useAPIServer)
+  (and .Values.clustermesh.useAPIServer (eq .Values.clustermesh.apiserver.kvstoremesh.kvstoreMode "internal"))
   (ne .Values.clustermesh.apiserver.tls.authMode "legacy")
 }}
 ---
@@ -14,6 +14,10 @@ metadata:
   {{- end }}
   labels:
     app.kubernetes.io/part-of: cilium
+    {{- with .Values.commonLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+
 data:
   users.yaml: |
     users:

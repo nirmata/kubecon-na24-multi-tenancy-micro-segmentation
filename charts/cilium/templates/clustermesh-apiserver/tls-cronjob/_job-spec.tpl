@@ -19,7 +19,7 @@ spec:
             {{- if .Values.debug.enabled }}
             - "--debug"
             {{- end }}
-            - "--ca-generate"
+            - "--ca-generate={{ .Values.certgen.generateCA }}"
             - "--ca-reuse-secret"
             - "--ca-secret-namespace={{ include "cilium.namespace" . }}"
             - "--ca-secret-name=cilium-ca"
@@ -76,21 +76,18 @@ spec:
                   - client auth
                   validity: {{ $certValidityStr }}
                 {{- end }}
-                {{- if .Values.externalWorkloads.enabled }}
-                - name: clustermesh-apiserver-client-cert
-                  namespace: {{ include "cilium.namespace" . }}
-                  commonName: "externalworkload"
-                  usage:
-                  - signing
-                  - key encipherment
-                  - client auth
-                  validity: {{ $certValidityStr }}
-                {{- end }}
           {{- with .Values.certgen.extraVolumeMounts }}
           volumeMounts:
           {{- toYaml . | nindent 10 }}
           {{- end }}
       hostNetwork: true
+      {{- with .Values.certgen.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.certgen.priorityClassName }}
+      priorityClassName: {{ .Values.certgen.priorityClassName }}
+      {{- end }}
       {{- with .Values.certgen.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
